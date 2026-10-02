@@ -1,0 +1,729 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jump Runner</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #101b2d;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+h1 { color: #4ade80; margin: 12px 0; }
+.stats {
+  display: flex;
+  justify-content: space-around;
+  font-size: 18px;
+  margin: 10px;
+}
+canvas {
+  display: block;
+  width: 96%;
+  max-width: 800px;
+  height: auto;
+  margin: 10px auto;
+  border: 3px solid #64748b;
+  border-radius: 12px;
+  background: #9cddff;
+  touch-action: none;
+}
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px auto;
+  width: 96%;
+}
+button {
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 10px;
+  font-size: 17px;
+  font-weight: bold;
+  background: #2563eb;
+  color: white;
+  touch-action: manipulation;
+}
+.controls button { flex: 1; }
+#start {
+  background: #22c55e;
+  color: #052e16;
+  padding: 14px 35px;
+  margin: 12px;
+  font-size: 20px;
+}
+button:active { transform: scale(.96); }
+p { color: #cbd5e1; }
+@media (orientation: landscape) {
+  h1 { font-size: 23px; margin: 4px; }
+  .stats { font-size: 15px; margin: 4px; }
+  canvas {
+    width: auto;
+    height: 48vh;
+    max-width: 96%;
+    margin: 4px auto;
+  }
+  .controls { margin: 5px auto; }
+  .controls button { padding: 9px; }
+  #start { padding: 8px 25px; margin: 5px; }
+  p { margin: 5px; }
+}
+
+.health-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 8px auto;
+  width: 94%;
+  font-size: 17px;
+  font-weight: bold;
+}
+#lives { color: #fb7185; }
+#healthTrack {
+  width: min(45vw, 260px);
+  height: 15px;
+  background: #334155;
+  border: 1px solid #64748b;
+  border-radius: 20px;
+  overflow: hidden;
+}
+#healthFill {
+  width: 100%;
+  height: 100%;
+  background: #ef4444;
+  transition: width 0.2s;
+}
+
+#homeMenu {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 20px;
+  background: linear-gradient(#7dd3fc, #dbeafe 60%, #86efac);
+  color: #10233c;
+  text-align: center;
+}
+#homeMenu h2 {
+  font-size: clamp(32px, 7vw, 58px);
+  color: #166534;
+  margin: 0;
+  text-shadow: 2px 3px #bbf7d0;
+}
+#homeMenu p {
+  color: #1e3a8a;
+  font-size: 17px;
+  margin: 4px;
+}
+#homeMenu .hero {
+  font-size: clamp(48px, 12vw, 90px);
+}
+#playNow {
+  background: #16a34a;
+  color: white;
+  font-size: 24px;
+  padding: 16px 55px;
+  border: 3px solid white;
+  box-shadow: 0 5px 0 #166534;
+}
+#homeBtn {
+  background: #475569;
+  color: white;
+  margin: 5px;
+}
+
+
+#shopModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,.85);
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.shop-card {
+  background: #172554;
+  color: white;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 18px;
+  border-radius: 18px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.shop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #1e3a8a;
+  border-radius: 12px;
+  padding: 10px;
+  margin: 10px 0;
+}
+.skin-preview {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.skin-buy {
+  padding: 9px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+
+/* New control layout */
+.controls {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(30px, 0.5fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.move-controls {
+  grid-column: 1;
+  display: flex;
+  gap: 8px;
+}
+.control-space {
+  grid-column: 2;
+  min-height: 1px;
+}
+.jump-control {
+  grid-column: 3;
+  display: flex;
+  justify-content: flex-end;
+}
+.move-controls button,
+.jump-control button {
+  flex: 1;
+  min-width: 0;
+}
+
+</style>
+</head>
+<body>
+
+<div id="homeMenu">
+  <div class="hero">🏃‍♂️ 🌵</div>
+  <h2>JUMP RUNNER</h2>
+  <p>Run, jump and beat your high score!</p>
+  <p>❤️ You have 3 lives. Avoid the obstacles!</p>
+  <button id="playNow">▶ PLAY</button>
+  <p>Tap JUMP to leap over obstacles.</p>
+</div>
+
+<h1>JUMP RUNNER</h1>
+<div class="stats">
+  <div>Score: <span id="score">0</span></div>
+  <div>🪙 Coins: <span id="coinCount">0</span></div>
+  <div>Best: <span id="highScore">0</span></div>
+  <div>Speed: <span id="speed">1</span></div>
+</div>
+<div class="health-panel">
+  <span>❤️ Lives: <span id="lives">3</span></span>
+  <div id="healthTrack"><div id="healthFill"></div></div>
+</div>
+
+<canvas id="game" width="800" height="320"></canvas>
+
+<div class="controls">
+  <div class="move-controls">
+    <button id="left">◀ LEFT</button>
+    <button id="right">RIGHT ▶</button>
+  </div>
+  <div class="control-space"></div>
+  <div class="jump-control">
+    <button id="jump">⬆ JUMP</button>
+  </div>
+</div>
+
+<button id="pauseBtn">⏸️ PAUSE</button>
+
+<p id="message">Press START GAME to play!</p>
+<button id="start">START GAME</button>
+<button id="homeBtn">🏠 HOME</button>
+<button id="shopBtn">🛒 SHOP</button>
+
+
+<div id="shopModal">
+  <div class="shop-card">
+    <h2>🛒 Skin Shop</h2>
+    <p>🪙 Coins: <span id="shopCoins">0</span></p>
+    <div class="shop-item">
+      <span class="skin-preview" style="background:#2563eb"></span>
+      <span>💙 Blue (Free)</span>
+      <button class="skin-buy" data-color="#2563eb" data-price="0">EQUIP</button>
+    </div>
+    <div class="shop-item">
+      <span class="skin-preview" style="background:#ef4444"></span>
+      <span>❤️ Fire Red</span>
+      <button class="skin-buy" data-color="#ef4444" data-price="50">BUY 50</button>
+    </div>
+    <div class="shop-item">
+      <span class="skin-preview" style="background:#22c55e"></span>
+      <span>💚 Neon Green</span>
+      <button class="skin-buy" data-color="#22c55e" data-price="100">BUY 100</button>
+    </div>
+    <div class="shop-item">
+      <span class="skin-preview" style="background:#facc15"></span>
+      <span>💛 Gold</span>
+      <button class="skin-buy" data-color="#facc15" data-price="200">BUY 200</button>
+    </div>
+    <p id="shopStatus">Choose a skin!</p>
+    <button id="closeShop">CLOSE ✖</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const scoreEl = document.getElementById("score");
+const coinEl = document.getElementById("coinCount");
+let coinBalance = Number(localStorage.getItem("jumpRunnerCoins") || 0);
+coinEl.textContent = coinBalance;
+const highScoreEl = document.getElementById("highScore");
+let highScore = Number(localStorage.getItem("jumpRunnerHighScore") || 0);
+highScoreEl.textContent = highScore;
+const speedEl = document.getElementById("speed");
+const livesEl = document.getElementById("lives");
+const healthFill = document.getElementById("healthFill");
+const message = document.getElementById("message");
+const startBtn = document.getElementById("start");
+
+const W = 800, H = 320, ground = 270;
+let player, obstacles, score, speed, running, over;
+let frame = 0, spawn = 0, raf;
+let coins = [];
+let lives = 3, invulnerable = 0;
+let audioCtx = null;
+
+function sound(freq, duration, type = "sine") {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext ||
+        window.webkitAudioContext)();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(
+      0.001, audioCtx.currentTime + duration
+    );
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) {}
+}
+
+
+// Skin shop
+const shopModal = document.getElementById("shopModal");
+const shopCoins = document.getElementById("shopCoins");
+const shopStatus = document.getElementById("shopStatus");
+let currentSkin = localStorage.getItem("jumpRunnerSkin") || "#2563eb";
+let ownedSkins;
+try {
+  ownedSkins = JSON.parse(
+    localStorage.getItem("jumpRunnerSkins") || '["#2563eb"]'
+  );
+  if (!Array.isArray(ownedSkins)) ownedSkins = ["#2563eb"];
+} catch (e) {
+  ownedSkins = ["#2563eb"];
+}
+if (!ownedSkins.includes("#2563eb")) ownedSkins.push("#2563eb");
+
+function refreshShop() {
+  shopCoins.textContent = coinBalance;
+  document.querySelectorAll(".skin-buy").forEach(btn => {
+    const color = btn.dataset.color;
+    const price = Number(btn.dataset.price);
+    if (ownedSkins.includes(color)) {
+      btn.textContent = currentSkin === color ? "EQUIPPED" : "EQUIP";
+    } else {
+      btn.textContent = "BUY " + price;
+    }
+  });
+}
+
+document.getElementById("shopBtn").addEventListener("click", () => {
+  refreshShop();
+  shopStatus.textContent = "Choose a skin!";
+  shopModal.style.display = "flex";
+});
+
+document.getElementById("closeShop").addEventListener("click", () => {
+  shopModal.style.display = "none";
+});
+
+document.querySelectorAll(".skin-buy").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const color = btn.dataset.color;
+    const price = Number(btn.dataset.price);
+
+    if (!ownedSkins.includes(color)) {
+      if (coinBalance < price) {
+        shopStatus.textContent = "Not enough coins!";
+        return;
+      }
+      coinBalance -= price;
+      coinEl.textContent = coinBalance;
+      localStorage.setItem("jumpRunnerCoins", String(coinBalance));
+      ownedSkins.push(color);
+      localStorage.setItem("jumpRunnerSkins", JSON.stringify(ownedSkins));
+      shopStatus.textContent = "Skin purchased!";
+    } else {
+      shopStatus.textContent = "Skin equipped!";
+    }
+
+    currentSkin = color;
+    localStorage.setItem("jumpRunnerSkin", currentSkin);
+    refreshShop();
+    draw();
+  });
+});
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background themes
+  const stageScore = Math.floor(score / 5);
+  let skyColor = "#9cdfff";
+  let cloudColor = "#ffffff";
+  let groundColor = "#22a447";
+  let groundEdge = "#166534";
+
+  if (stageScore >= 200) {
+    skyColor = "#101a3a";
+    cloudColor = "#cbd5e1";
+    groundColor = "#27334f";
+    groundEdge = "#45516b";
+  } else if (stageScore >= 100) {
+    skyColor = "#f6c27a";
+    cloudColor = "#fff0ce";
+    groundColor = "#c58b43";
+    groundEdge = "#8a5727";
+  }
+
+
+  // Sky
+  ctx.fillStyle = "#9cddff";
+  ctx.fillRect(0, 0, W, H);
+
+  // Clouds
+  ctx.fillStyle = cloudColor;
+  for (let i = 0; i < 4; i++) {
+    let x = (i * 240 - frame * 0.5 % 950 + 950) % 850;
+    ctx.beginPath();
+    ctx.arc(x, 55, 20, 0, Math.PI * 2);
+    ctx.arc(x + 22, 48, 25, 0, Math.PI * 2);
+    ctx.arc(x + 47, 56, 18, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Ground
+  ctx.fillStyle = groundColor;
+  ctx.fillRect(0, ground, W, H - ground);
+  ctx.fillStyle = groundEdge;
+  ctx.fillRect(0, ground, W, 6);
+
+  // Ground markings
+  ctx.fillStyle = "#bbf7d0";
+  for (let i = 0; i < 20; i++) {
+    let x = (i * 60 - frame * speed % 60 + 800) % 800;
+    ctx.fillRect(x, ground + 20, 25, 4);
+  }
+
+  // Obstacles
+  for (const o of obstacles) {
+    ctx.fillStyle = "#a16207";
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+    ctx.fillStyle = "#65a30d";
+    ctx.fillRect(o.x - 4, o.y + 8, 8, 12);
+    ctx.fillRect(o.x + o.w - 4, o.y + 18, 8, 12);
+  }
+
+  // Coins
+for (const c of coins) {
+  ctx.beginPath();
+  ctx.fillStyle = "#facc15";
+  ctx.arc(c.x, c.y, 11, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#ca8a04";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.fillStyle = "#fff3a3";
+  ctx.arc(c.x - 3, c.y - 3, 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Player
+  ctx.fillStyle = currentSkin;
+  ctx.fillRect(player.x, player.y + 12, player.w, player.h - 12);
+  ctx.fillStyle = "#f5b987";
+  ctx.fillRect(player.x + 5, player.y, 30, 26);
+  ctx.fillStyle = "#111827";
+  ctx.fillRect(player.x + 25, player.y + 8, 5, 5);
+
+  ctx.fillStyle = "#1e40af";
+  if (player.jumping) {
+    ctx.fillRect(player.x + 5, player.y + 40, 12, 10);
+    ctx.fillRect(player.x + 22, player.y + 40, 12, 10);
+  } else {
+    let step = Math.floor(frame / 5) % 2;
+    ctx.fillRect(player.x + 4, ground - 12, 12, 12);
+    ctx.fillRect(player.x + (step ? 22 : 18), ground - 12, 12, 12);
+  }
+
+  if (!running && !over) {
+    ctx.fillStyle = "#10233c";
+    ctx.font = "bold 36px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("READY TO RUN?", W / 2, 150);
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(15,23,42,0.65)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.font = "bold 42px Arial";
+    ctx.fillText("GAME OVER!", W / 2, 135);
+    ctx.font = "bold 25px Arial";
+    ctx.fillText("Score: " + Math.floor(score / 5), W / 2, 180);
+  }
+}
+
+function jump() {
+  if (!running || player.jumping) return;
+  player.vy = -14;
+  player.jumping = true;
+  sound(520, 0.12, "square");
+}
+
+function movePlayer(amount) {
+  if (!running) return;
+  player.x = Math.max(0, Math.min(W - player.w,
+    player.x + amount));
+  draw();
+}
+
+function reset() {
+  cancelAnimationFrame(raf);
+  player = {
+    x: 100, y: ground - 48, w: 38, h: 48,
+    vy: 0, jumping: false
+  };
+  obstacles = [];
+  coins = [];
+  score = 0;
+  speed = 5;
+  lives = 3;
+  invulnerable = 0;
+  livesEl.textContent = lives;
+  healthFill.style.width = "100%";
+  frame = 0;
+  spawn = 60;
+  running = true;
+  over = false;
+  scoreEl.textContent = "0";
+  speedEl.textContent = "1";
+  message.textContent = "Avoid the obstacles!";
+  startBtn.textContent = "RESTART";
+  loop();
+}
+
+function endGame() {
+  running = false;
+  over = true;
+  sound(130, 0.4, "sawtooth");
+  message.textContent = "You hit an obstacle!";
+  startBtn.textContent = "PLAY AGAIN";
+  draw();
+}
+
+function loop() {
+  if (!running) return;
+  frame++;
+  score++;
+  speed = 5 + Math.floor(score / 500);
+  scoreEl.textContent = Math.floor(score / 5);
+  const shownScore = Math.floor(score / 5);
+  if (shownScore > highScore) {
+    highScore = shownScore;
+    highScoreEl.textContent = highScore;
+    localStorage.setItem("jumpRunnerHighScore", String(highScore));
+  }
+  speedEl.textContent = (speed / 5).toFixed(1);
+
+  player.y += player.vy;
+  player.vy += 0.65;
+
+  if (player.y >= ground - player.h) {
+    player.y = ground - player.h;
+    player.vy = 0;
+    player.jumping = false;
+  }
+
+  spawn--;
+  if (spawn <= 0) {
+    let h = 30 + Math.random() * 30;
+    obstacles.push({
+      x: W + 20, y: ground - h,
+      w: 25 + Math.random() * 15, h: h
+    });
+    spawn = 65 + Math.random() * 55;
+  }
+
+  if (invulnerable > 0) invulnerable--;
+
+  for (const o of obstacles) {
+    o.x -= speed;
+    if (invulnerable === 0 &&
+        player.x + player.w - 5 > o.x + 4 &&
+        player.x + 5 < o.x + o.w - 4 &&
+        player.y + player.h - 4 > o.y + 4) {
+      lives--;
+      livesEl.textContent = lives;
+      healthFill.style.width = (lives / 3 * 100) + "%";
+      sound(180, 0.2, "sawtooth");
+      invulnerable = 60;
+      o.x = -100;
+      if (lives <= 0) {
+        endGame();
+        return;
+      }
+    }
+  }
+
+  // Spawn and move collectible coins
+if (frame % 100 === 0) {
+  coins.push({
+    x: W + 20,
+    y: ground - (55 + Math.random() * 75)
+  });
+}
+
+for (const c of coins) {
+  c.x -= speed;
+  if (
+    player.x < c.x + 11 &&
+    player.x + player.w > c.x - 11 &&
+    player.y < c.y + 11 &&
+    player.y + player.h > c.y - 11
+  ) {
+    c.collected = true;
+    coinBalance++;
+    coinEl.textContent = coinBalance;
+    localStorage.setItem("jumpRunnerCoins", String(coinBalance));
+    sound(880, 0.08, "sine");
+  }
+}
+coins = coins.filter(c => !c.collected && c.x > -20);
+
+obstacles = obstacles.filter(o => o.x + o.w > 0);
+  draw();
+  raf = requestAnimationFrame(loop);
+}
+
+document.getElementById("left").addEventListener("click",
+  () => movePlayer(-35));
+document.getElementById("right").addEventListener("click",
+  () => movePlayer(35));
+document.getElementById("jump").addEventListener("click", jump);
+
+canvas.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  jump();
+});
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space" || e.code === "ArrowUp") {
+    e.preventDefault();
+    jump();
+  }
+  if (e.code === "ArrowLeft") movePlayer(-35);
+  if (e.code === "ArrowRight") movePlayer(35);
+});
+
+
+document.getElementById("playNow").addEventListener("click", () => {
+  document.getElementById("homeMenu").style.display = "none";
+  sound(700, 0.15);
+  reset();
+});
+
+document.getElementById("homeBtn").addEventListener("click", () => {
+  running = false;
+  over = false;
+  cancelAnimationFrame(raf);
+  startBtn.textContent = "START GAME";
+  message.textContent = "Press START GAME to play!";
+  document.getElementById("homeMenu").style.display = "flex";
+  draw();
+});
+
+const pauseBtn = document.getElementById("pauseBtn");
+
+startBtn.addEventListener("click", () => {
+  pauseBtn.textContent = "⏸ PAUSE";
+});
+
+pauseBtn.addEventListener("click", () => {
+  if (pauseBtn.textContent.includes("PAUSE")) {
+    if (!running) return;
+
+    running = false;
+    cancelAnimationFrame(raf);
+    pauseBtn.textContent = "▶ RESUME";
+    message.textContent = "Game Paused";
+  } else {
+    if (over) return;
+
+    running = true;
+    pauseBtn.textContent = "⏸ PAUSE";
+    message.textContent = "";
+    raf = requestAnimationFrame(loop);
+  }
+});
+startBtn.addEventListener("click", () => {
+  sound(700, 0.15);
+  reset();
+});
+
+player = {
+  x: 100, y: ground - 48, w: 38, h: 48,
+  vy: 0, jumping: false
+};
+obstacles = [];
+score = 0;
+speed = 5;
+running = false;
+over = false;
+draw();
+</script>
+</body>
+</html>
